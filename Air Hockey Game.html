@@ -1,0 +1,332 @@
+<!DOCTYPE HTML>
+
+<head>
+
+	<title>Air Hockey</title>
+
+	<style>
+
+		/* put the game in the middle of the screen */
+		*{ padding: 0; margin: 0; }
+		canvas {background: #eee; display: block; margin: auto; margin-top: 30px;}
+
+	</style>
+
+<body>
+
+	<h1 style="font-family:sans-serif; display: block; width: 21%; position: relative; left: 43%; margin-top: 30px;">Air Hockey 2P</h1>
+
+	<!-- adjust size of game -->
+	<canvas id="canvas" width="1250" height="600"></canvas>
+
+	<script>
+
+		// declare all variables
+		var canvas = document.getElementById("canvas");
+		var ctx = canvas.getContext("2d");
+		var ballSpeed = 6;
+		var xSpeed = 0;
+		var ySpeed = 0;
+		var player_1_Score = 0;
+		var player_2_Score = 0;
+
+		//draws the black & blue borders around the gameboard
+		function drawGameBoard (x,y,w,h,b) {
+			ctx.beginPath();
+
+			if(b) {
+				ctx.strokeStyle = "000000";
+				ctx.lineWidth = 40;
+			}
+
+			else {
+				ctx.strokeStyle = "#6977e6";
+				ctx.lineWidth = 40;
+			}
+			ctx.strokeRect(x,y,w,h);
+			ctx.closePath();
+		}
+
+		// draws the goal circles in front of each net
+		function drawGoal (x,y,r,s) {
+			ctx.beginPath();
+			ctx.lineWidth = 4;
+
+			if(s) {
+				ctx.arc(x, y, r, 0.5*Math.PI, 1.5*Math.PI, false);
+			}
+
+			else {
+				ctx.arc(x, y, r, 1.5*Math.PI, 0.5*Math.PI, false);
+			}
+			ctx.strokeStyle = "#6977e6";
+			ctx.stroke();
+			ctx.closePath();
+		}
+
+		// draws a circle in the middle of the ice
+		function drawCircle (x,y,r) {
+			ctx.beginPath();
+			ctx.arc(x, y, r, 0, 2*Math.PI, false);
+			ctx.lineWidth = 4;
+			ctx.strokeStyle = "#6977e6";
+			ctx.stroke();
+			ctx.closePath();
+		}
+
+		//function for drawing the mallets and puck
+		function drawFilledCircle (x,y,r,d) {
+			ctx.beginPath();
+			ctx.arc(x, y, r, 0, 2*Math.PI);
+
+			if (d==1) {
+				ctx.fillStyle = "#00FFFF";
+			}
+			else if (d==2) {
+				ctx.fillStyle = "#B22222";
+			}
+			else {
+				ctx.fillStyle = "#000000";
+			}
+			ctx.fill();
+			ctx.closePath();
+		}
+
+		//this function is used to draw the original pieces of the game
+		function drawBoard () {
+			drawGameBoard(0, 0, 1250, 600, 1);
+			drawGameBoard(30, 30, 1190, 540, 0);
+			drawGoal(30, 300, 180, 0);
+			drawGoal(30, 300, 100, 0);
+			drawGoal(1220, 300, 180, 1);
+			drawGoal(1220, 300, 100, 1);
+			drawCircle(625, 300, 50, 4);
+			drawCircle(625, 300, 5, 4);
+
+			//draws the middle line that divides the ice
+			ctx.beginPath();
+			ctx.moveTo(625, 30);
+			ctx.lineTo(625, 570);
+			ctx.stroke();
+			ctx.closePath();
+
+			//draws the actual goal line for the goal on the left side
+			ctx.beginPath();
+			ctx.moveTo(40, 200);
+			ctx.lineWidth = 20;
+			//draws the actual goal line for the goal on the right side
+			ctx.lineTo(40, 400);
+			ctx.strokeStyle = "#000000";
+			ctx.stroke();
+			ctx.closePath();
+
+			ctx.beginPath();
+			ctx.moveTo(1210, 200);
+			ctx.lineWidth = 20;
+			ctx.lineTo(1210, 400);
+			ctx.strokeStyle = "#000000";
+			ctx.stroke();
+			ctx.closePath();
+
+			//creates scoreboards
+			ctx.font = "50px Arial";
+			ctx.lineWidth = 5;
+			ctx.strokeText(player_1_Score, 545, 100);
+			ctx.strokeText(player_2_Score, 650, 100);
+		}
+
+		//to use later in determining ball speed off of contact
+		function distance (x1,y1,x2,y2) {
+			var tempx = x2 - x1;
+			var tempy = y2 - y1; 
+			tempx *= tempx;
+			tempy *= tempy;
+			return Math.sqrt(tempx + tempy);
+		}
+
+		//defines mallet object for each player
+		var mallet = function (x,y,r) {
+			this.x = x;
+			this.y = y;
+			this.radius = r;
+		}
+
+		//creates two new mallet objects
+		var p1Mallet = new mallet(310, canvas.height - 300, 40);
+		var p2Mallet = new mallet(940, canvas.height - 300, 40);
+
+		//defines puck as an object
+		var puck = function (x, y, r) {
+			this.x = x;
+			this.y = y;
+			this.radius = r;
+		}
+
+		//creates a puck object named ball
+		var ball = new puck(625, 300, 15);
+
+		function movePlayers () {
+
+			//function to move player 1 mallet: pressing w, a, s, d makes mallet move 
+			addEventListener("keydown", function moveMallets (event) {
+				
+				//if these keycodes are pressed, player 1 moves
+				if (event.keyCode == 68) {
+					p1Mallet.x += 20;
+				}
+				if (event.keyCode == 65) {
+					p1Mallet.x -= 20;
+				}
+				if (event.keyCode == 83) {
+					p1Mallet.y += 20;
+				}
+				if (event.keyCode == 87) {
+					p1Mallet.y -= 20;
+				}
+
+				//if these keycodes are pressed, player 2 moves
+				if (event.keyCode == 39) {
+					p2Mallet.x += 20;
+				}
+				if (event.keyCode == 37) {
+					p2Mallet.x -= 20;
+				}
+				if (event.keyCode == 40) {
+					p2Mallet.y += 20;
+				}
+				if (event.keyCode == 38) {
+					p2Mallet.y -= 20;
+				}
+
+				removeEventListener("keydown", movePlayers);
+			});
+		}
+
+		movePlayers();
+
+		//this function is run over and over again, clearing the board and re-writing what is being executed
+		function draw () {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+			// redraw everything that was drawn earlier
+			drawBoard();
+
+			//redraw the player mallets and ball with modified coordinates
+			drawFilledCircle(p1Mallet.x, p1Mallet.y, p1Mallet.radius, 1);
+			drawFilledCircle(p2Mallet.x, p2Mallet.y, p2Mallet.radius, 2);
+			drawFilledCircle(ball.x, ball.y, ball.radius, 0);
+
+			//if the ball is within the goal lines (anywhere on the board)
+			if (ball.y > 200 && ball.y < 400) {
+
+				//if the x coordinate of the ball is past the black line on the right side, player 1 scores
+				if (ball.x + xSpeed > canvas.width - 2*ball.radius - 30) {
+					console.log("Player 1 Score");
+					ball.x = canvas.width/2;
+					ball.y = canvas.height/2;
+					xSpeed = 0;
+					ySpeed = 0;
+					player_1_Score = player_1_Score + 1;
+				}
+				//if the x coordinate of the ball is past the black line on the left side, player 2 scores
+				else if (ball.x + xSpeed < 2*ball.radius + 30) {
+					console.log("Player 2 Score");
+					ball.x = canvas.width/2;
+					ball.y = canvas.height/2;
+					xSpeed = 0;
+					ySpeed = 0;
+					player_2_Score = player_2_Score + 1;
+				}
+			}
+
+			//bounce off wall logic: if the position of the ball is past these dimensions, make the speed of the ball opposite so it goes the other way
+			if (ball.x + xSpeed >= canvas.width - ball.radius*2 - 30 || ball.x + xSpeed <= ball.radius*2 + 30)  {
+				xSpeed *= -1;
+			}
+			else if (ball.y + ySpeed >= canvas.height - ball.radius*2 - 30 || ball.y + ySpeed <= ball.radius*2 + 30) {
+				ySpeed *= -1;
+			}
+
+			//for player 1 to not be able to move off the screen
+			if (p1Mallet.x > canvas.width - p1Mallet.radius*2 - 30) {
+				p1Mallet.x = 1160;
+			}
+			else if (p1Mallet.x < p1Mallet.radius*2 + 30) {
+				p1Mallet.x = 90;
+			}
+			if (p1Mallet.y > canvas.height - p1Mallet.radius*2 - 30) {
+				p1Mallet.y = 510;
+			}
+			else if (p1Mallet.y < p1Mallet.radius*2 + 30) {
+				p1Mallet.y = 90;
+			}
+
+			//for player 2 to not be able to move off the screen
+			if (p2Mallet.x > canvas.width - p2Mallet.radius*2 - 30) {
+				p2Mallet.x = 1160;
+			}
+			else if (p2Mallet.x < p2Mallet.radius*2 + 30) {
+				p2Mallet.x = 90;
+			}
+			if (p2Mallet.y > canvas.height - p2Mallet.radius*2 - 30) {
+				p2Mallet.y = 510;
+			}
+			else if (p2Mallet.y < p2Mallet.radius*2 + 30) {
+				p2Mallet.y = 90;
+			}
+
+			//determines whether or not mallet & ball make contact. Uses distance function from earlier to calculate values based on current ball & mallet positioning. 
+			var p1Dist = distance(p1Mallet.x, p1Mallet.y, ball.x, ball.y);
+			var p2Dist = distance(p2Mallet.x, p2Mallet.y, ball.x, ball.y);
+
+			//for Player 1
+			//if the value calculated from the distance function is less than 55 (mallet & ball make contact). 55 is the sum of the ball radius & mallet radius.
+			if (p1Dist <= 55) {
+
+				//calculate difference in ball and mallet positioning
+				var d1x = ball.x - p1Mallet.x;
+				var d1y = ball.y - p1Mallet.y;
+
+				//divide the difference by 20 because multiplying by 55 in the method below would be too fast a speed for the ball
+				d1x /= 20;
+				d1y /= 20;
+
+				//calculate the speed at which the ball moves away by multiplying the slowed down difference above by ballSpeed (10)
+				xSpeed = d1x*ballSpeed;
+				ySpeed = d1y*ballSpeed;
+			}
+
+			//for Player 2
+			//if the value calculated from the distance function is less than 55 (mallet & ball make contact). 55 is the sum of the ball radius & mallet radius.
+			if (p2Dist <= 55) {
+				
+				//calculate difference in ball and mallet positioning
+				var d2x = ball.x - p2Mallet.x;
+				var d2y = ball.y - p2Mallet.y;
+
+				//divide the difference by 20 because multiplying by 55 would be too fast a speed for the ball
+				d2x /= 20;
+				d2y /= 20;
+
+				//calculate the speed at which the ball moves away by multiplying the slowed down difference above by ballSpeed (10)
+				xSpeed = d2x*ballSpeed;
+				ySpeed = d2y*ballSpeed;
+			}
+
+			//ball's x position will increase/decrease speed each time draw function is ran based on what value is in the xSpeed variable
+			ball.x += xSpeed;
+			//ball's y position will increase/decrease speed each time draw function is ran based on what value is in the ySpeed variable
+			ball.y += ySpeed;
+			//xSpeed of ball will multiply itself by 0.99 each time draw function is ran to slow down after a hit
+			xSpeed *= 0.99;
+			//ySpeed of ball will multiply itself by 0.99 each time draw function is ran to slow down after a hit
+			ySpeed *= 0.99;
+		}
+
+		//calls draw function to begin game, with value after it determining how fast the game is played
+		setInterval(draw, 10);
+	</script>
+
+</body>
+</head>
+</HTML>
